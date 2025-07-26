@@ -23,14 +23,14 @@ function generateOneReport(row, index, templateFile, folder, term, year, grade, 
   const rubric2 = getRubric(mean2);
   const rubric3 = getRubric(mean3);
 
-  const docCopy = templateFile.makeCopy(`${name} Report Card`, folder);
-  const doc = DocumentApp.openById(docCopy.getId());
+  // Create temporary Google Doc in root folder (not inside the student folder)
+  const tempDoc = templateFile.makeCopy(`${name} Report Card TEMP`, DriveApp.getRootFolder());
+  const doc = DocumentApp.openById(tempDoc.getId());
   const body = doc.getBody();
 
   const placeholders = {
     '{{NAME}}': name,
     '{{ADM}}': adm,
-
     '{{ENG}}': average_scores[0],
     '{{KIS}}': average_scores[1],
     '{{MATH}}': average_scores[2],
@@ -40,7 +40,6 @@ function generateOneReport(row, index, templateFile, folder, term, year, grade, 
     '{{PRETECH}}': average_scores[6],
     '{{AGRIC}}': average_scores[7],
     '{{CRE}}': average_scores[8],
-
     '{{ENG_CAT1}}': cat1_scores[0],
     '{{KIS_CAT1}}': cat1_scores[1],
     '{{MATH_CAT1}}': cat1_scores[2],
@@ -50,7 +49,6 @@ function generateOneReport(row, index, templateFile, folder, term, year, grade, 
     '{{PRETECH_CAT1}}': cat1_scores[6],
     '{{AGRIC_CAT1}}': cat1_scores[7],
     '{{CRE_CAT1}}': cat1_scores[8],
-
     '{{ENG_CAT2}}': cat2_scores[0],
     '{{KIS_CAT2}}': cat2_scores[1],
     '{{MATH_CAT2}}': cat2_scores[2],
@@ -60,7 +58,6 @@ function generateOneReport(row, index, templateFile, folder, term, year, grade, 
     '{{PRETECH_CAT2}}': cat2_scores[6],
     '{{AGRIC_CAT2}}': cat2_scores[7],
     '{{CRE_CAT2}}': cat2_scores[8],
-
     '{{ENG_CAT1_RUBRIC}}': getRubric(cat1_scores[0]),
     '{{KIS_CAT1_RUBRIC}}': getRubric(cat1_scores[1]),
     '{{MATH_CAT1_RUBRIC}}': getRubric(cat1_scores[2]),
@@ -70,7 +67,6 @@ function generateOneReport(row, index, templateFile, folder, term, year, grade, 
     '{{PRETECH_CAT1_RUBRIC}}': getRubric(cat1_scores[6]),
     '{{AGRIC_CAT1_RUBRIC}}': getRubric(cat1_scores[7]),
     '{{CRE_CAT1_RUBRIC}}': getRubric(cat1_scores[8]),
-
     '{{ENG_CAT2_RUBRIC}}': getRubric(cat2_scores[0]),
     '{{KIS_CAT2_RUBRIC}}': getRubric(cat2_scores[1]),
     '{{MATH_CAT2_RUBRIC}}': getRubric(cat2_scores[2]),
@@ -80,7 +76,6 @@ function generateOneReport(row, index, templateFile, folder, term, year, grade, 
     '{{PRETECH_CAT2_RUBRIC}}': getRubric(cat2_scores[6]),
     '{{AGRIC_CAT2_RUBRIC}}': getRubric(cat2_scores[7]),
     '{{CRE_CAT2_RUBRIC}}': getRubric(cat2_scores[8]),
-
     '{{ENG_RUBRIC}}': getRubric(average_scores[0]),
     '{{KIS_RUBRIC}}': getRubric(average_scores[1]),
     '{{MATH_RUBRIC}}': getRubric(average_scores[2]),
@@ -90,11 +85,9 @@ function generateOneReport(row, index, templateFile, folder, term, year, grade, 
     '{{PRETECH_RUBRIC}}': getRubric(average_scores[6]),
     '{{AGRIC_RUBRIC}}': getRubric(average_scores[7]),
     '{{CRE_RUBRIC}}': getRubric(average_scores[8]),
-
     '{{TOTAL_CAT1}}': total1.toString(),
     '{{TOTAL_CAT2}}': total2.toString(),
     '{{TOTAL_AVG}}': total3.toString(),
-
     '{{MEAN_CAT1}}': mean1,
     '{{MEAN_CAT2}}': mean2,
     '{{MEAN_AVG}}': mean3,
@@ -103,7 +96,6 @@ function generateOneReport(row, index, templateFile, folder, term, year, grade, 
     '{{MEAN_AVG_RUBRIC}}': rubric3,
     '{{AVG_RUBRIC}}': rubric3,
     '{{AVG_COMMENT}}': getGeneralComment(rubric3),
-
     '{{TERM}}': term,
     '{{YEAR}}': year,
     '{{GRADE}}': grade
@@ -125,26 +117,20 @@ function generateOneReport(row, index, templateFile, folder, term, year, grade, 
     logo.setWidth(110).setHeight(120);
     logoCell.setWidth(100);
     textCell.setWidth(400);
-    textCell.setText(`🏫 Mungakha Junior School\n📍 Bungoma, Kenya\n📅 ${grade}, ${term} Year, ${year}`);
+    textCell.setText(`🏫 Mungakha Junior School\n📍 Bungoma, Kenya\n ${grade}, ${term} Year, ${year}`);
     textCell.setFontSize(20).setBold(true);
     body.removeChild(element);
   }
 
   doc.saveAndClose();
-  insertStudentChart(name, cat1_scores, cat2_scores, folder, docCopy.getId());
+  insertStudentChart(name, cat1_scores, cat2_scores, folder, tempDoc.getId());
 
-  docCopy.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  Utilities.sleep(1000);
+  const pdf = tempDoc.getAs(MimeType.PDF);
+  const pdfFile = folder.createFile(pdf).setName(`${name} Report Card.pdf`);
+  const downloadLink = pdfFile.getUrl();
 
-  const downloadLink = docCopy.getUrl();
-  const reopenedDoc = DocumentApp.openById(docCopy.getId());
-  const reopenedBody = reopenedDoc.getBody();
-  reopenedBody.appendParagraph('\nDownload Your Report Card:');
-  reopenedBody.appendParagraph(downloadLink).setLinkUrl(downloadLink);
-  reopenedDoc.saveAndClose();
-
-  const pdf = docCopy.getAs(MimeType.PDF);
-  const pdfFile = folder.createFile(pdf);
+  // Clean up temp Google Doc
+  DriveApp.getRootFolder().removeFile(tempDoc);
 
   if (email) {
     GmailApp.sendEmail(email, 'Your Report Card',
