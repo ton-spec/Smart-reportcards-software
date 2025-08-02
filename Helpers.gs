@@ -61,21 +61,34 @@ function insertStudentChart(name, cat1_scores, cat2_scores, folder, docId) {
   ss.deleteSheet(chartSheet);
 }
 
-function generateRubricSummary(data, folder) {
+function generateRubricSummaryTotalAverage(data, folder) {
   let rubricCount = {
     'E.E ~AL8': 0, 'E.E ~AL7': 0, 'M.E ~AL6': 0, 'M.E ~AL5': 0,
     'A.E ~AL4': 0, 'A.E ~AL3': 0, 'B.E ~AL2': 0, 'B.E ~AL1': 0
   };
 
   for (let i = 1; i < data.length; i++) {
-    const avg = ((Number(data[i][2]) + Number(data[i][3])) / 2).toFixed(2); // Adjust column index if needed
+    let total = 0;
+    let count = 0;
+
+    for (let j = 2; j < data[i].length; j++) { // Start from column 2 (index 2)
+      let score = Number(data[i][j]);
+      if (!isNaN(score)) {
+        total += score;
+        count++;
+      }
+    }
+
+    const avg = (total / count).toFixed(2);
     const rubric = getRubric(avg);
+
     if (rubric in rubricCount) rubricCount[rubric]++;
   }
 
-  const doc = DocumentApp.create("Rubric Summary");
+  const doc = DocumentApp.create("Overall Rubric Summary");
   const body = doc.getBody();
-  body.appendParagraph("Rubric Summary Report");
+  body.appendParagraph("Rubric Summary Based on Total Average per Student");
+
   for (let key in rubricCount) {
     body.appendParagraph(`${key}: ${rubricCount[key]}`);
   }
