@@ -98,6 +98,47 @@ function generateRubricSummaryTotalAverage(data, folder) {
   DriveApp.getRootFolder().removeFile(file);
 }
 
+function generateRubricSummarySheet(data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheetName = 'Rubric Summary';
+  const existing = ss.getSheetByName(sheetName);
+  if (existing) ss.deleteSheet(existing);
+
+  const sheet = ss.insertSheet(sheetName);
+
+  const subjects = ["ENG", "KIS", "MATH", "SCI", "SST", "ART", "PRETECH", "AGRIC", "CRE"];
+  const rubricLevels = ['E.E ~AL8', 'E.E ~AL7', 'M.E ~AL6', 'M.E ~AL5', 'A.E ~AL4', 'A.E ~AL3', 'B.E ~AL2', 'B.E ~AL1'];
+
+  // Initialize an object to hold rubric count per subject
+  let rubricTable = {};
+  for (let rubric of rubricLevels) {
+    rubricTable[rubric] = Array(subjects.length).fill(0);
+  }
+
+  // Loop over each student
+  for (let i = 1; i < data.length; i++) {
+    for (let s = 0; s < subjects.length; s++) {
+      let cat1 = Number(data[i][2 + s * 2]);
+      let cat2 = Number(data[i][3 + s * 2]);
+
+      if (!isNaN(cat1) && !isNaN(cat2)) {
+        let avg = ((cat1 + cat2) / 2).toFixed(2);
+        let rubric = getRubric(avg);
+        if (rubric in rubricTable) {
+          rubricTable[rubric][s]++;
+        }
+      }
+    }
+  }
+
+  // Output to sheet
+  const headerRow = ['Rubric'].concat(subjects);
+  sheet.getRange(1, 1, 1, headerRow.length).setValues([headerRow]);
+
+  let output = rubricLevels.map(rubric => [rubric].concat(rubricTable[rubric]));
+  sheet.getRange(2, 1, output.length, output[0].length).setValues(output);
+}
+
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('📄 Report Cards')
